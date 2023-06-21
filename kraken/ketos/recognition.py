@@ -390,7 +390,7 @@ def train(ctx, batch_size, pad, output, spec, append, load, freq, quit, epochs,
 @click.argument('test_set', nargs=-1, callback=_expand_gt, type=click.Path(exists=False, dir_okay=False))
 def test(ctx, batch_size, model, evaluation_files, device, pad, workers,
          threads, reorder, base_dir, normalization, normalize_whitespace,
-         repolygonize, force_binarization, format_type, test_set):
+         repolygonize, force_binarization, format_type, test_set, translate, translate_file):
     """
     Evaluate on a test set.
     """
