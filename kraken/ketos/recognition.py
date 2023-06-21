@@ -371,6 +371,11 @@ def train(ctx, batch_size, pad, output, spec, append, load, freq, quit, epochs,
               'sharing a prefix up to the last extension with JSON `.path` files '
               'containing the baseline information. In `binary` mode files are '
               'collections of pre-extracted text line images.')
+@click.option('--translate', show_default=True, type=(str, str, str), default=('', '', ''),
+              help='Python-style translation table to modify the ground truth and output')
+@click.option('--translate-file', show_default=True, default=None,
+              type=click.File(mode='r', lazy=True),
+              help='Load a character translation table from JSON')
 @click.argument('test_set', nargs=-1, callback=_expand_gt, type=click.Path(exists=False, dir_okay=False))
 def test(ctx, batch_size, model, evaluation_files, device, pad, workers,
          reorder, base_dir, normalization, normalize_whitespace, repolygonize,
@@ -381,6 +386,7 @@ def test(ctx, batch_size, model, evaluation_files, device, pad, workers,
     if not model:
         raise click.UsageError('No model to evaluate given.')
 
+    import json
     import numpy as np
     from torch.utils.data import DataLoader
 
@@ -440,6 +446,14 @@ def test(ctx, batch_size, model, evaluation_files, device, pad, workers,
     if reorder and base_dir != 'auto':
         reorder = base_dir
 
+    transtab = dict()
+    if translate_file:
+        logger.debug(f'Loading translation table from {translate_file}')
+        transtab = str.maketrans(json.load(translate_file))
+
+    (oldc, newc, delc) = translate
+    transtab.update(str.maketrans(oldc, newc, delc))
+
     acc_list = []
     for p, net in nn.items():
         algn_gt: List[str] = []
@@ -478,6 +492,9 @@ def test(ctx, batch_size, model, evaluation_files, device, pad, workers,
                 try:
                     pred = net.predict_string(im, lens)
                     for x, y in zip(pred, text):
+                        if len(transtab) > 0:
+                            x = x.translate(transtab)
+                            y = y.translate(transtab)
                         chars += len(y)
                         c, algn1, algn2 = global_align(y, x)
                         algn_gt.extend(algn1)
